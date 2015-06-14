@@ -8,6 +8,8 @@ Scenes.coldwar = function(el, opts){
 
   this.el = el;
   this.show_meta = false;
+  this.show_help = false;
+  this.show_help_changed = false;
 
   // world size
   this.max_x = 1600;
@@ -21,6 +23,11 @@ Scenes.coldwar = function(el, opts){
   });
 
   this.params = [{
+    key: 'capital_count',
+    info: 'Capitals',
+    min: 1,
+    max: 4
+  }, {
     key: 'defcon',
     info: 'Defcon',
     min: 1,
@@ -48,7 +55,7 @@ Scenes.coldwar = function(el, opts){
   }, {
     key: 'unit_rate',
     info: 'Unit Production Rate for Factories',
-    min: 1,
+    min: 0,
     max: 5
   }, {
     key: 'stock_bombers',
@@ -95,7 +102,14 @@ Scenes.coldwar = function(el, opts){
     info: 'Number of Satellites each Capital can have. Sats launch at Defcon 3.',
     min: 0,
     max: 10
+  }, {
+    key: 'first_strike',
+    info: 'First Strike',
+    min: 0,
+    max: 1
   }];
+
+  // defaults
 
   this.first_strike = false;
 
@@ -120,6 +134,21 @@ Scenes.coldwar = function(el, opts){
   this.stock_fighters = 0;
   this.stock_icbms = 0;
   this.stock_abms = 0;
+
+  if(opts){
+    this.params.forEach(function(param){
+      if(opts.hasOwnProperty(param.key)){
+        if(opts[param.key] === 'true'){
+          self[param.key] = 1;
+        } else if(opts[param.key] === 'false'){
+          self[param.key] = 0;
+        } else {
+          self[param.key] = parseInt(opts[param.key], 10);
+        }
+      }
+    });
+  }
+
 
   this.gameover = false;
 
@@ -162,12 +191,22 @@ Scenes.coldwar = function(el, opts){
       }
     }
 
-    if(self.capitals.length <= 1 && ! self.gameover){
+    if(self.capital_count > 1 && self.capitals.length <= 1 && ! self.gameover){
       self.gameover = true;
       setTimeout(init, 5000, self);
     }
 
     timers.update = Date.now() - timer;
+
+    if(self.show_help_changed){
+      if(self.show_help){
+        document.getElementById('help').style.display='block';
+      } else {
+        views.help.el.style.display='none';
+      }
+      self.show_help_changed = false;
+    }
+
 
   }
 
@@ -227,6 +266,45 @@ Scenes.coldwar = function(el, opts){
       views.map.ctx.fillText('GAME OVER', views.map.w/2, views.map.h/2);
     }
 
+    if(self.show_meta){
+
+      text_x = self.w - 240;
+
+      views.map.ctx.font = '16pt ubuntu mono';
+      views.map.ctx.textBaseline = 'middle';
+      views.map.ctx.textAlign = 'right';
+
+      views.map.ctx.fillStyle = '#999';
+      if(timers.update > 12){
+        views.map.ctx.fillStyle = '#f00';
+      }
+      views.map.ctx.fillText(timers.update + 'ms update  ', text_x, 32);
+
+      views.map.ctx.fillStyle = '#999';
+      if(timers.paint > 12){
+        views.map.ctx.fillStyle = '#f00';
+      }
+      views.map.ctx.fillText(timers.paint + 'ms paint   ', text_x, 56);
+      views.map.ctx.fillStyle = '#999';
+      if(timers.total > 12){
+        views.map.ctx.fillStyle = '#f00';
+      }
+      views.map.ctx.fillText((timers.total) + 'ms total   ', text_x, 80);
+
+      views.map.ctx.font = '16pt ubuntu mono';
+      views.map.ctx.textBaseline = 'middle';
+      views.map.ctx.textAlign = 'right';
+      views.map.ctx.fillStyle = '#999';
+
+      views.map.ctx.fillText(self.bombers.length + ' bombers ', text_x, 120);
+      views.map.ctx.fillText(self.fighters.length + ' fighters', text_x, 144);
+      views.map.ctx.fillText(self.icbms.length + ' icbms   ', text_x, 168);
+      views.map.ctx.fillText(self.abms.length + ' abms    ', text_x, 192);
+      views.map.ctx.fillText(self.booms.length + ' booms   ', text_x, 216);
+      var total = self.bombers.length + self.fighters.length + self.icbms.length + self.abms.length + self.booms.length;
+      views.map.ctx.fillText(total + ' total   ', text_x, 240);
+    }
+
   }
 
   function tick(){
@@ -255,17 +333,84 @@ Scenes.coldwar = function(el, opts){
     self.world.abms = self.abms = [];
     self.world.sats = self.sats = [];
 
-    var capitals = [{
-      x: self.world.max_x * 0.2,
-      y: self.world.max_y * 0.5,
-      z: 0,
-      color: '#fc0'
-    }, {
-      x: self.world.max_x * 0.8,
-      y: self.world.max_y * 0.5,
-      z: 0,
-      color: '#0ff',
-    }];
+    var capitals = [];
+
+    if(self.capital_count === 4){
+
+      capitals.push({
+        x: self.world.max_x * 0.2,
+        y: self.world.max_y * 0.6,
+        z: 0,
+        color: '#fc0'
+      });
+
+      capitals.push({
+        x: self.world.max_x * 0.8,
+        y: self.world.max_y * 0.4,
+        z: 0,
+        color: '#0ff',
+      });
+
+      capitals.push({
+        x: self.world.max_x * 0.4,
+        y: self.world.max_y * 0.2,
+        z: 0,
+        color: '#f00'
+      });
+
+      capitals.push({
+        x: self.world.max_x * 0.6,
+        y: self.world.max_y * 0.9,
+        z: 0,
+        color: '#090',
+      });
+
+    } else if(self.capital_count === 3){
+
+      capitals.push({
+        x: self.world.max_x * 0.35,
+        y: self.world.max_y * 0.8,
+        z: 0,
+        color: '#fc0'
+      });
+
+      capitals.push({
+        x: self.world.max_x * 0.65,
+        y: self.world.max_y * 0.8,
+        z: 0,
+        color: '#0ff',
+      });
+
+      capitals.push({
+        x: self.world.max_x * 0.5,
+        y: self.world.max_y * 0.2,
+        z: 0,
+        color: '#f00'
+      });
+
+    } else if(self.capital_count === 1){
+
+      capitals.push({
+        x: self.world.max_x * 0.5,
+        y: self.world.max_y * 0.5,
+        z: 0,
+        color: '#0ff',
+      });
+
+    } else {
+      capitals = [{
+        x: self.world.max_x * 0.2,
+        y: self.world.max_y * 0.5,
+        z: 0,
+        color: '#fc0'
+      }, {
+        x: self.world.max_x * 0.8,
+        y: self.world.max_y * 0.5,
+        z: 0,
+        color: '#0ff',
+      }];
+    }
+
 
     if(self.first_strike){
       // select one capital to attack first
@@ -338,6 +483,16 @@ Scenes.coldwar = function(el, opts){
     self.raf = window.requestAnimationFrame(tick);
   }
 
+  function setOpt(key, val){
+    self[key] = val;
+    var opts = [];
+    self.params.forEach(function(param){
+      opts.push(param.key + '=' + self[param.key]);
+    });
+    history.pushState(null, null, '?' + opts.join('&'));
+    restart();
+  }
+
   function start(){
 
     var html;
@@ -350,6 +505,9 @@ Scenes.coldwar = function(el, opts){
 
     self.w = self.el.offsetWidth;
     self.h = self.el.offsetHeight;
+
+    views.help = {};
+    views.help.el = document.getElementById('help');
 
     views.map = {};
     views.map.wrap = document.getElementById('map');
@@ -396,30 +554,25 @@ Scenes.coldwar = function(el, opts){
     var el;
 
     el = document.createElement('div');
+    el.innerHTML = '<p>Type <strong>?</strong> for Help</p>';
+    elParams.appendChild(el);
+
+    el = document.createElement('div');
     el.innerHTML = '<button>Restart</label>';
     el.classList.add('restart');
     elParams.appendChild(el);
     el.getElementsByTagName('button')[0].onclick=restart;
 
-    el = document.createElement('div');
-    html = '';
-    html += '<label id="first_strike" title="First Strike">first_strike</label>';
-    html += '<input type="checkbox" value="1" for="first_strike" />';
-    el.innerHTML = html;
-    elOptions.appendChild(el);
-    if(self.first_strike){
-      el.getElementsByTagName('input')[0].checked=true;
-    }
-    el.getElementsByTagName('input')[0].addEventListener ('change', function(e){
-      self.first_strike = e.target.checked;
-    });
-
     self.params.forEach(function(param){
+      // if(param.key === 'first_strike'){
+      //   return;
+      // }
       var el = document.createElement('div');
       var html;
       html = '';
       html += '<label title="' + param.info + '">' + param.key + '</label>';
-      html += '<input type="number" value="' + self[param.key] + '" />';
+      html += '<input type="range" value="' + self[param.key] + '" min="' + param.min + '" max="' + param.max + '" />';
+      html += '<span class="value">' + self[param.key] + '</span>';
       el.innerHTML = html;
       elOptions.appendChild(el);
       el.getElementsByTagName('input')[0].addEventListener ('change', function(e){
@@ -434,9 +587,22 @@ Scenes.coldwar = function(el, opts){
           e.target.value = val;
           return;
         }
-        self[param.key] = val;
+        setOpt(param.key, val);
       }, false);
     });
+
+    // el = document.createElement('div');
+    // html = '';
+    // html += '<label id="first_strike" title="First Strike">first_strike</label>';
+    // html += '<input type="checkbox" value="1" for="first_strike" />';
+    // el.innerHTML = html;
+    // elOptions.appendChild(el);
+    // if(self.first_strike){
+    //   el.getElementsByTagName('input')[0].checked=true;
+    // }
+    // el.getElementsByTagName('input')[0].addEventListener ('change', function(e){
+    //   setOpt('first_strike', e.target.checked);
+    // });
 
     boot();
   }
@@ -447,6 +613,11 @@ Scenes.coldwar = function(el, opts){
 
   function toggleMeta(){
     self.show_meta = !self.show_meta;
+  }
+
+  function toggleHelp(){
+    self.show_help = !self.show_help;
+    self.show_help_changed = true;
   }
 
   function toggleVectors(){
@@ -467,6 +638,7 @@ Scenes.coldwar = function(el, opts){
     start: start,
     stop: stop,
     toggleMeta: toggleMeta,
+    toggleHelp: toggleHelp,
     toggleVectors: toggleVectors
   };
 
